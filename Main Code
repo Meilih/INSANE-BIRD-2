@@ -1,0 +1,317 @@
+import pygame
+import random
+from pygame import mixer
+
+
+# Initalisera spelet
+pygame.init()
+
+# Ange spelets namn
+pygame.display.set_caption("Insane Bird")
+
+# Hur många millisekunder passerar efter en call
+clock = pygame.time.Clock()
+
+# Anger resoulution av längden och bredden
+screenWidth = 865
+screenHeight = 650
+screen = pygame.display.set_mode((screenWidth, screenHeight))
+
+# Laddar upp bakgrundsbilden från filer
+background_image = pygame.image.load("C:\\Users\MelihTuncer\\PycharmProjects\\pythonProject1\\assets\\bg.png").convert()
+
+# Se till att skala bakgrundsbilden för att se till att den passar skärmens dimensioner
+background_image = pygame.transform.scale(background_image, (screenWidth, screenHeight))
+
+# Ladda upp flapen från filen assets
+bird_image = pygame.image.load("C:\\Users\MelihTuncer\\PycharmProjects\\pythonProject1\\assets\\flap.png").convert_alpha()
+
+# Hämta dimensionerna för flapen o hur den ska passa
+bird_width = bird_image.get_width()
+bird_height = bird_image.get_height()
+
+# Laddar upp laser bilden från filerna
+laser_image = pygame.image.load("C:\\Users\MelihTuncer\\PycharmProjects\\pythonProject1\\assets\\laser.png").convert_alpha()
+
+# O hämtar dimensionerna för laserbilden o hur den ska passa in
+laser_width = laser_image.get_width()
+laser_height = laser_image.get_height()
+
+# Laddar upp bilden för fiende flapen
+enemy_image = pygame.image.load("C:\\Users\MelihTuncer\\PycharmProjects\\pythonProject1\\assets\\enemy.png").convert_alpha()
+
+# Ger dimensionerna för för fiendebilden för att den ska passa in
+enemy_width = bird_width
+enemy_height = bird_height
+
+# Ger fågelns startposition
+bird_x = 100
+bird_y = 200
+bird_y_move = 0
+
+# Ger Laserns statposition o vart den ska komma ut från
+laser_x = bird_x + bird_width
+laser_y = bird_y + bird_height / 4 - laser_height / 2
+laser_visible = False
+
+# Ange fiendens startposition o vart den ska röra sig ifrån
+enemy_x = screenWidth
+enemy_y = random.randint(0, screenHeight - enemy_height)
+enemy_x_move = -20
+
+# Ladda upp texttypen och storleken av texterna för spelet
+font = pygame.font.Font("pricedown bl.ttf", 35)
+game_over_font = pygame.font.Font("pricedown bl.ttf", 80)
+message_font = pygame.font.Font("pricedown bl.ttf", 30)
+
+# Definera färgerna som används i spelet
+red = (255, 0, 0)
+black = (0, 0, 0)
+
+# Ladda in ljuderna från filerna
+jump_sound = mixer.Sound("C:\\Users\MelihTuncer\\PycharmProjects\\pythonProject1\\wing.wav")
+game_over_sound = mixer.Sound("C:\\Users\MelihTuncer\\PycharmProjects\\pythonProject1\\gta5.dead.wav")
+
+# Visar den aktuella scoren som uppdateras i spelet
+def show_score(score):
+    score_text = font.render("Score: " + str(score), True, black)
+    screen.blit(score_text, [20, 5])
+
+# Detta är en funktion för att kunna skapa texterna
+def create_text(text, font):
+    text_surface = font.render(text, True, red)
+    return text_surface, text_surface.get_rect()
+
+# Funktion för att kunna rita rören alltså tuben i spelet
+def draw_tubes(x_tube, y_tube, tube_width, tube_height, gap):
+    pygame.draw.rect(screen, black, [x_tube, y_tube, tube_width, tube_height])
+    pygame.draw.rect(screen, black, [x_tube, y_tube + tube_height + gap, tube_width, screenHeight])
+
+# Detta är en funlktion för att rita lasern i spelet
+def draw_laser(x, y):
+    screen.blit(laser_image, (x, y))
+
+# Funktionen för att kunna rita fiende flapen
+def draw_enemy(x, y):
+    screen.blit(enemy_image, (x, y))
+
+# Detta är en funktion som ska visa spelets game-over skärm, så när man dör ska denna text dyka upp
+def game_over():
+    game_over_text, game_over_rect = create_text("Game Over!", game_over_font)
+    game_over_rect.center = screenWidth / 2, (screenHeight / 2)
+    screen.blit(game_over_text, game_over_rect)
+
+# samma gäller här som kommentaren ovan
+    message_text, message_rect = create_text("Press any key to continue DAWG", message_font)
+    message_rect.center = screenWidth / 2, (screenHeight / 2) + 75
+    screen.blit(message_text, message_rect)
+
+    pygame.display.update()
+
+    # Detta gör så att d blir möjligt att kunna fortsätta spelet när tryckt på vilken key som helst efter man dött
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                waiting = False
+                main()
+            elif event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+# Detta är en funktion som gör att man kan spela om efter man dött eller att kunna quita
+def replay_or_quit():
+    for event in pygame.event.get([pygame.KEYUP, pygame.QUIT]):
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
+        elif event.type == pygame.KEYDOWN:
+            return event.key
+    return None
+
+
+# Denna funktion ser till att lasern gör att enemy flapen ska dö när den kolliderat med den
+def check_laser_collision(laser_x, laser_y, enemy_x, enemy_y):
+    if laser_x + laser_width > enemy_x and laser_x < enemy_x + enemy_width:
+        if laser_y < enemy_y + enemy_height and laser_y + laser_height > enemy_y:
+            return True
+    return False
+
+# DEnna funktion ser till att skapa huvudmenyn för att visa texterna
+def main_menu():
+    menu_font = pygame.font.Font("pricedown bl.ttf", 70)
+    title_text, title_rect = create_text("Insane Bird", menu_font)
+    title_rect.center = screenWidth / 2, screenHeight / 4
+
+# Samma gäller här som kommentaren ovan, visar vart texten ska börja ifrån o vart på skrämen texten ska vara,
+# samma som kommentaren ovan
+
+    instruction_text, instruction_rect = create_text("SPACE to start, W to shoot laser, Up n Down", font)
+    instruction_rect.center = screenWidth / 1.86, screenHeight / 2
+
+##saknar kommentar
+    menu_active = True
+    while menu_active:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    menu_active = False
+
+        screen.blit(background_image, (0, 0))
+        screen.blit(title_text, title_rect)
+        screen.blit(instruction_text, instruction_rect)
+        pygame.display.update()
+
+# Detta är huvudspelets loop, så main game loop
+def main():
+    global bird_y, bird_y_move, laser_x, laser_y, laser_visible, enemy_x, enemy_y
+
+    # sätter startpositionera o egenskaperna för fågeln
+    bird_x = 100
+    bird_y = 200
+    bird_y_move = 0
+
+    #ydvuhevudhve
+
+    tube_x = screenWidth
+    tube_y = 0
+    tube_width = 35
+    tube_height = random.randint(0, int(screenHeight / 2))
+    tube_gap = bird_height * 4
+
+    score = 0
+    game_over_flag = False
+
+    # variabler för bakgrundsrörelserna
+    background_x = 0
+    background_speed = 2
+
+    # spel loop
+    while not game_over_flag:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_over_flag = True
+
+            #ser till att flappen kan gå upp, plus att jump ljudet spelas
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    bird_y_move = -7
+                    jump_sound.play()
+
+                # ser till att flappen kan gå ner och att jump ljudet spelas
+                elif event.key == pygame.K_DOWN:
+                    bird_y_move = 7
+                    jump_sound.play()
+
+                # ser till att lasern kommer ut när tryckt på W
+                elif event.key == pygame.K_w:
+                    if not laser_visible:
+                        laser_x = bird_x + bird_width
+                        laser_y = bird_y + bird_height / 2 - laser_height / 2
+                        laser_visible = True
+
+            #ser till att när man trycker på keydown o keyup så finns d ett stopp på hur mke den ska gå upp
+            # elr ner med, alltså sätter en gräns så att den inte ba går ner eller upp utan den stoppar
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+                    bird_y_move = 0
+
+        bird_y += bird_y_move
+
+        # Kollar för kollsion med tuben och att ett ljud ska spelas när man dör och att spelet tar slut
+        if bird_x + bird_width > tube_x and bird_x < tube_x + tube_width:
+            if bird_y < tube_height or bird_y + bird_height > tube_height + tube_gap:
+
+                game_over_sound.play()
+                game_over_flag = True
+
+        # Funktion för att kolla om man kolliderar med fiende flappen
+        if check_laser_collision(laser_x, laser_y, enemy_x, enemy_y):
+            laser_visible = False
+            enemy_x = screenWidth
+            enemy_y = random.randint(0, screenHeight - enemy_height)
+
+
+        # Kollar och kontrollerar för kollision med skärmens gränser, alltså att när man e går o rör sound
+        # boundaries så dör man o game over ljudet spelas
+
+        if bird_y > screenHeight - bird_height or bird_y < 0:
+
+            game_over_sound.play()
+            game_over_flag = True
+
+        # DEnna funktion kollar för kollison med fiende flappens rörelse
+        if bird_x + bird_width > enemy_x and bird_x < enemy_x + enemy_width:
+            if bird_y < enemy_y + enemy_height and bird_y + bird_height > enemy_y:
+
+                game_over_sound.play()
+                game_over_flag = True
+
+        # denna funktion uppdaterar scoren med 1 när flappen gått igneom en tuben
+        if bird_x > tube_x + tube_width and bird_x < tube_x + tube_width + bird_width / 2:
+            score += 1
+
+        # uppdatderar tub positionerna i spelet
+        if tube_x < -tube_width:
+            tube_x = screenWidth
+            tube_height = random.randint(0, int(screenHeight / 2))
+
+        # uppdaterar fiende flappens position i spelet
+        if enemy_x < -enemy_width:
+            enemy_x = screenWidth
+            enemy_y = random.randint(0, screenHeight - enemy_height)
+
+        # uppdaterar laser positionen i spelet, o det står 12 där för att visa hur snabbt den ska åka
+        if laser_visible:
+            laser_x += 12
+            if laser_x > screenWidth:
+                laser_visible = False
+
+        # denna funktion ser till att bakgrunden rör på sig
+        background_x -= background_speed
+
+        # resetar bakgrundns postitionen när den går ut från screen, så off-screen
+
+        if background_x < -background_image.get_width():
+            background_x = 0
+
+        # ritar bakgrunden
+        screen.blit(background_image, (background_x, 0))
+        screen.blit(background_image, (background_x + background_image.get_width(), 0))
+
+        # ritar tuben
+        draw_tubes(tube_x, tube_y, tube_width, tube_height, tube_gap)
+        tube_x -= 16
+
+        # ritar fågeln
+        screen.blit(bird_image, (bird_x, bird_y))
+
+        # ritar lasern när synlig
+        if laser_visible:
+            draw_laser(laser_x, laser_y)
+
+        # ritar fiende flappen
+        draw_enemy(enemy_x, enemy_y)
+        enemy_x += enemy_x_move
+
+        # ritar scoren
+        show_score(score)
+
+        pygame.display.update()
+        clock.tick(60)
+
+    # game over funktionen, när d tar slut
+    game_over()
+
+# kan starta spelet
+main_menu()
+main()
+
+# kan avlsuta spelet
+pygame.quit()
+quit()
